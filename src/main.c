@@ -62,6 +62,8 @@ static void LedBlink(void *pParameters)
  ******************************************************************************/
 int main(void)
 {
+  I2C_Test();
+
   /* Chip errata */
   CHIP_Init();
   /* If first word of user data page is non-zero, enable Energy Profiler trace */
@@ -92,4 +94,12 @@ int main(void)
   vTaskStartScheduler();
 
   return 0;
+}
+
+int _write(int file, const char *ptr, int len) {
+    int x;
+    for (x = 0; x < len; x++) {
+       ITM_SendChar (*ptr++);
+    }
+    return (len);
 }

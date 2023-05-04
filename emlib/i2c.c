@@ -4,7 +4,12 @@
 #include "em_gpio.h"
 #include "em_cmu.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 static uint8_t device_addr;
+
+SemaphoreHandle_t xSemaphore = NULL;
 
 void BSP_I2C_Init(uint8_t addr) {
 
@@ -15,6 +20,8 @@ void BSP_I2C_Init(uint8_t addr) {
 	I2C1->ROUTE = I2C_ROUTE_SDAPEN |
 		I2C_ROUTE_SCLPEN | I2C_ROUTE_LOCATION_LOC0;
 	I2C_Init(I2C1, &i2cInit);
+
+	xSemaphore = xSemaphoreCreateMutex();
 
 	device_addr = addr;
 }
@@ -32,27 +39,48 @@ bool I2C_WriteRegister(uint8_t reg, uint8_t data) {
 	I2C_TransferSeq_TypeDef seq;
 	uint8_t dataW[2];
 
-	seq.addr = device_addr;
-	seq.flags = I2C_FLAG_WRITE;
+	if( xSemaphore != NULL )
+	    {
+	        /* See if we can obtain the semaphore.  If the semaphore is not
+	        available wait 10 ticks to see if it becomes free. */
+	        if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
+	        {
+	            /* We were able to obtain the semaphore and can now access the
+	            shared resource. */
 
-	/* Register to write: 0x67 ( INT_FLAT )*/
-	dataW[0] = reg;
-	dataW[1] = data;
+	        	seq.addr = device_addr;
+				seq.flags = I2C_FLAG_WRITE;
 
-	seq.buf[0].data = dataW;
-	seq.buf[0].len = 2;
-	I2C_Status = I2C_TransferInit(I2C1, &seq);
+				/* Register to write: 0x67 ( INT_FLAT )*/
+				dataW[0] = reg;
+				dataW[1] = data;
 
-	while (I2C_Status == i2cTransferInProgress) {
-		I2C_Status = I2C_Transfer(I2C1);
-	}
+				seq.buf[0].data = dataW;
+				seq.buf[0].len = 2;
+				I2C_Status = I2C_TransferInit(I2C1, &seq);
 
-	if (I2C_Status != i2cTransferDone) {
-		ret_value = false;
-	}
-	else {
-		ret_value = true;
-	}
+				while (I2C_Status == i2cTransferInProgress) {
+					I2C_Status = I2C_Transfer(I2C1);
+				}
+
+				if (I2C_Status != i2cTransferDone) {
+					ret_value = false;
+				}
+				else {
+					ret_value = true;
+				}
+
+	            /* We have finished accessing the shared resource.  Release the
+	            semaphore. */
+	            xSemaphoreGive( xSemaphore );
+	        }
+	        else
+	        {
+	            /* We could not obtain the semaphore and can therefore not access
+	            the shared resource safely. */
+	        }
+	    }
+
 	return ret_value;
 }
 
@@ -67,33 +95,60 @@ bool I2C_ReadRegister(uint8_t reg, uint8_t* val) {
 	I2C_TransferSeq_TypeDef seq;
 	uint8_t data[2];
 
-	seq.addr = device_addr;
-	seq.flags = I2C_FLAG_WRITE_READ;
+	bool ret_value = false;
 
-	seq.buf[0].data = &reg;
-	seq.buf[0].len = 1;
-	seq.buf[1].data = data;
-	seq.buf[1].len = 1;
+	if( xSemaphore != NULL )
+	    {
+	        /* See if we can obtain the semaphore.  If the semaphore is not
+	        available wait 10 ticks to see if it becomes free. */
+	        if( xSemaphoreTake( xSemaphore, ( TickType_t ) 10 ) == pdTRUE )
+	        {
+	            /* We were able to obtain the semaphore and can now access the
+	            shared resource. */
 
-	I2C_Status = I2C_TransferInit(I2C1, &seq);
+	        	seq.addr = device_addr;
+				seq.flags = I2C_FLAG_WRITE_READ;
 
-	while (I2C_Status == i2cTransferInProgress) {
-		I2C_Status = I2C_Transfer(I2C1);
-	}
+				seq.buf[0].data = &reg;
+				seq.buf[0].len = 1;
+				seq.buf[1].data = data;
+				seq.buf[1].len = 1;
 
-	if (I2C_Status != i2cTransferDone) {
-		return false;
-	}
+				I2C_Status = I2C_TransferInit(I2C1, &seq);
 
-	*val = data[0];
+				while (I2C_Status == i2cTransferInProgress) {
+					I2C_Status = I2C_Transfer(I2C1);
+				}
 
-	return true;
+				if (I2C_Status != i2cTransferDone) {
+					ret_value = false;
+				}
+				else {
+					ret_value = true;
+				}
+
+				*val = data[0];
+
+	            /* We have finished accessing the shared resource.  Release the
+	            semaphore. */
+	            xSemaphoreGive( xSemaphore );
+	        }
+	        else
+	        {
+	            /* We could not obtain the semaphore and can therefore not access
+	            the shared resource safely. */
+	        }
+	    }
+
+	return ret_value;
 }
 
 bool I2C_Test() {
 	uint8_t data;
 
-	I2C_ReadRegister(0xD0, &data);
+	BSP_I2C_Init(0x5A);
+
+	I2C_ReadRegister(0x11, &data);
 
 	printf("I2C: %02X\n", data);
 
