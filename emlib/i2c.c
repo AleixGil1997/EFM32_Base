@@ -146,17 +146,38 @@ bool I2C_ReadRegister(uint8_t reg, uint8_t* val) {
 bool I2C_Test() {
 	uint8_t data;
 
-	BSP_I2C_Init(0x5A);
+	BSP_I2C_Init(0x5B);
 
-	I2C_ReadRegister(0x11, &data);
+	if(!I2C_ReadRegister(0x20, &data)) {
+		printf("Error.\n");
+	}
 
 	printf("I2C: %02X\n", data);
 
-	if (data == 0x60) {
+	if (data == 0x20) {
 		return true;
+		printf("Correcte.\n");
 	}
 	else {
 		return false;
 	}
 
+}
+
+void ReadFake(uint8_t option, uint8_t* val) {
+	switch(option) {
+	case 0:
+		*val = 0x81;
+		break;
+	default:
+		*val = 0x00;
+		break;
+	}
+}
+
+void SensorFake() {
+	uint8_t data;
+
+	ReadFake(0, &data); // 0 = HW_ID (0x81)
+	printf("I2C: 0x%02X\n", data);
 }

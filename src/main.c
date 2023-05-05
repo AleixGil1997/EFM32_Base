@@ -57,13 +57,19 @@ static void LedBlink(void *pParameters)
   }
 }
 
+static void SensorConn()
+{
+	for (;; ) {
+		//I2C_Test();
+		SensorFake();
+	}
+}
+
 /***************************************************************************//**
  * @brief  Main function
  ******************************************************************************/
 int main(void)
 {
-  I2C_Test();
-
   /* Chip errata */
   CHIP_Init();
   /* If first word of user data page is non-zero, enable Energy Profiler trace */
@@ -82,13 +88,18 @@ int main(void)
   SLEEP_SleepBlockBegin((SLEEP_EnergyMode_t)(configSLEEP_MODE + 1));
 #endif
 
-  /* Parameters value for taks*/
-  static TaskParams_t parametersToTask1 = { pdMS_TO_TICKS(1000), 0 };
-  static TaskParams_t parametersToTask2 = { pdMS_TO_TICKS(500), 1 };
+  /* Parameters value for tasks*/
+  //static TaskParams_t parametersToTask1 = { pdMS_TO_TICKS(1000), 0 };
+  //static TaskParams_t parametersToTask2 = { pdMS_TO_TICKS(500), 1 };
 
   /*Create two task for blinking leds*/
-  xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
-  xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
+  //xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
+  //xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
+
+  //SensorTest();
+
+  xTaskCreate(SensorConn, (const char *) "Sensor", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+
 
   /*Start FreeRTOS Scheduler*/
   vTaskStartScheduler();
