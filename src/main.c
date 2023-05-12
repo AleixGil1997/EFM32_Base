@@ -96,8 +96,6 @@ int main(void)
   //xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
   //xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
 
-  //SensorTest();
-
   xTaskCreate(SensorConn, (const char *) "Sensor", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
 

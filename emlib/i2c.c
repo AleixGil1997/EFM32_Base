@@ -164,7 +164,7 @@ bool I2C_Test() {
 
 }
 
-void ReadFake(uint8_t option, uint8_t* val) {
+bool ReadFake(uint8_t option, uint8_t* val) {
 	switch(option) {
 	case 0:
 		*val = 0x81;
@@ -173,11 +173,17 @@ void ReadFake(uint8_t option, uint8_t* val) {
 		*val = 0x00;
 		break;
 	}
+	return true;
+}
+
+bool WriteFake(uint8_t reg, uint8_t data) {
+	return true;
 }
 
 void SensorFake() {
 	uint8_t data;
+	uint8_t option = 0; // 0 = HW_ID (0x81)
 
-	ReadFake(0, &data); // 0 = HW_ID (0x81)
+	ReadFake(option, &data);
 	printf("I2C: 0x%02X\n", data);
 }
