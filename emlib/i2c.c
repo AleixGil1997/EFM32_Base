@@ -90,7 +90,7 @@ bool I2C_WriteRegister(uint8_t reg, uint8_t data) {
  * @param val Value read
  * @return true on success
  */
-bool I2C_ReadRegister(uint8_t reg, uint8_t* val) {
+bool I2C_ReadRegister(uint8_t reg, uint16_t* val) {
 	I2C_TransferReturn_TypeDef I2C_Status;
 	I2C_TransferSeq_TypeDef seq;
 	uint8_t data[2];
@@ -144,46 +144,53 @@ bool I2C_ReadRegister(uint8_t reg, uint8_t* val) {
 }
 
 bool I2C_Test() {
-	uint8_t data;
+	uint16_t data;
+	uint16_t co2 = 0;
 
-	BSP_I2C_Init(0x5B);
+	BSP_I2C_Init(0xB6);
 
-	if(!I2C_ReadRegister(0x20, &data)) {
-		printf("Error.\n");
+	if(!I2C_ReadRegister(0x20, &data)) { // HW_ID
+		printf("Error de lectura.\n");
 	}
 
-	printf("I2C: %02X\n", data);
+	printf("HW_ID: 0x%02X\n", data);
+	if (data == 0x81) printf("HW_ID Correcte.\n");
+	else printf("HW_ID Incorrecte.\n");
 
-	if (data == 0x20) {
-		return true;
-		printf("Correcte.\n");
+	if (!I2C_ReadRegister(0x00, &data)) { // STATUS
+			printf("Error de lectura.\n");
+	}
+
+	printf("STATUS: 0x%02X\n", data);
+	if (data == 0x10) {
+		printf("STATUS Correcte.\n");
+
+		if (!I2C_ReadRegister(0x02, &co2)) { // ALG_RESULT_DATA
+			printf("Error de lectura.\n");
+		}
+
+		printf("CO2 Level: 0x%04X\n", co2);
 	}
 	else {
-		return false;
+		printf("STATUS Incorrecte. Hi ha algun error.\n");
+		if (!I2C_ReadRegister(0xE0, &data)) { // ERROR_ID
+			printf("Error de lectura.\n");
+		}
+
+		printf("Error ID: 0x%02X\n", data);
 	}
 
-}
-
-bool ReadFake(uint8_t option, uint8_t* val) {
-	switch(option) {
-	case 0:
-		*val = 0x81;
-		break;
-	default:
-		*val = 0x00;
-		break;
-	}
+	// if(data & 0b00000000) {
+	//	 printf("There is an error.\n");
+	//	 printf("I2C: 0x%02X\n", data);
+	// }
 	return true;
 }
 
-bool WriteFake(uint8_t reg, uint8_t data) {
+bool Operate(uint8_t reg, uint8_t data) {
 	return true;
 }
 
-void SensorFake() {
-	uint8_t data;
-	uint8_t option = 0; // 0 = HW_ID (0x81)
-
-	ReadFake(option, &data);
-	printf("I2C: 0x%02X\n", data);
+bool Send(uint8_t reg, uint8_t data) {
+	return true;
 }

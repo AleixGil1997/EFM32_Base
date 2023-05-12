@@ -60,8 +60,8 @@ static void LedBlink(void *pParameters)
 static void SensorConn()
 {
 	for (;; ) {
-		//I2C_Test();
-		SensorFake();
+		I2C_Test();
+		//SensorFake();
 	}
 }
 
@@ -80,6 +80,8 @@ int main(void)
   /* Setting state of leds*/
   BSP_LedSet(0);
   BSP_LedSet(1);
+  BSP_LedToggle(0);
+  BSP_LedToggle(1);
 
   /* Initialize SLEEP driver, no calbacks are used */
   SLEEP_Init(NULL, NULL);
