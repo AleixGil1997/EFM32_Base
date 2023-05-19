@@ -11,6 +11,8 @@ static uint8_t device_addr;
 
 SemaphoreHandle_t xSemaphore = NULL;
 
+QueueHandle_t data_queue;
+
 void BSP_I2C_Init(uint8_t addr) {
 
 	I2C_Init_TypeDef i2cInit = I2C_INIT_DEFAULT;
@@ -144,8 +146,7 @@ bool I2C_ReadRegister(uint8_t reg, uint16_t* val) {
 }
 
 bool I2C_Test() {
-	uint16_t data;
-	uint16_t co2 = 0;
+	uint16_t data = 0;
 
 	BSP_I2C_Init(0xB6);
 
@@ -165,11 +166,7 @@ bool I2C_Test() {
 	if (data == 0x10) {
 		printf("STATUS Correcte.\n");
 
-		if (!I2C_ReadRegister(0x02, &co2)) { // ALG_RESULT_DATA
-			printf("Error de lectura.\n");
-		}
-
-		printf("CO2 Level: 0x%04X\n", co2);
+		return true;
 	}
 	else {
 		printf("STATUS Incorrecte. Hi ha algun error.\n");
@@ -178,19 +175,13 @@ bool I2C_Test() {
 		}
 
 		printf("Error ID: 0x%02X\n", data);
+
+		return false;
 	}
 
 	// if(data & 0b00000000) {
 	//	 printf("There is an error.\n");
 	//	 printf("I2C: 0x%02X\n", data);
 	// }
-	return true;
-}
-
-bool Operate(uint8_t reg, uint8_t data) {
-	return true;
-}
-
-bool Send(uint8_t reg, uint8_t data) {
 	return true;
 }

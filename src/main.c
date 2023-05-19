@@ -57,12 +57,72 @@ static void LedBlink(void *pParameters)
   }
 }
 
-static void SensorConn()
-{
-	for (;; ) {
-		I2C_Test();
-		//SensorFake();
-	}
+void setup() {
+    // Inicialitza la cua
+    data_queue = xQueueCreate(10, SENSOR_DATA_SIZE);
+
+    I2C_Test();
+
+    // Crea les tasques
+    xTaskCreate(sensor_task, (const char*) "Sensor Task", STACK_SIZE_FOR_TASK, NULL, 1, NULL);
+    xTaskCreate(data_process_task, (const char*) "Data Process Task", STACK_SIZE_FOR_TASK, NULL, 2, NULL);
+    xTaskCreate(led_control_task, (const char*) "LED Control Task", STACK_SIZE_FOR_TASK, NULL, 3, NULL);
+
+    for (;;) {
+
+    }
+}
+
+void sensor_task(void* pvParameters) {
+    while (1) {
+        // Lee los datos del sensor
+        uint16_t co2;
+        // ...
+
+        // Añade los datos a la cola
+        xQueueSend(data_queue, sensor_data, 0);
+
+        // Espera un tiempo antes de volver a leer los datos
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+void data_process_task(void* pvParameters) {
+    while (1) {
+        // Lee los datos de la cola
+        uint8_t sensor_data[SENSOR_DATA_SIZE];
+        xQueueReceive(data_queue, sensor_data, portMAX_DELAY);
+
+        // Procesa los datos
+        uint16_t processed_data = sensor_data[0] << 8 | sensor_data[1];
+
+        // Añade los datos procesados a la cola
+        uint8_t processed_data_bytes[2] = { (uint8_t)(processed_data >> 8), (uint8_t)processed_data };
+        xQueueSend(data_queue, processed_data_bytes, 0);
+    }
+}
+
+void led_control_task(void* pvParameters) {
+    // Configura el LED
+    // ...
+
+    while (1) {
+        // Lee los datos de la cola
+        uint8_t sensor_data[SENSOR_DATA_SIZE];
+        xQueueReceive(data_queue, sensor_data, portMAX_DELAY);
+
+        // Obtiene el valor de CO2 de los datos
+        uint16_t co2_ppm = sensor_data[2] << 8 | sensor_data[3];
+
+        // Controla el LED según el valor de CO2
+        if (co2_ppm >= 1000) {
+            //digitalWrite(LED_PIN, HIGH);
+        }
+        else {
+            //digitalWrite(LED_PIN, LOW);
+        }
+        BSP_LedToggle(pData->ledNo);
+    }
 }
 
 /***************************************************************************//**
@@ -98,7 +158,7 @@ int main(void)
   //xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
   //xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
 
-  xTaskCreate(SensorConn, (const char *) "Sensor", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+  xTaskCreate(setup, (const char *) "Sensor", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 
 
   /*Start FreeRTOS Scheduler*/
