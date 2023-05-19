@@ -74,10 +74,15 @@ void setup() {
 }
 
 void sensor_task(void* pvParameters) {
-    while (1) {
+    for (;;) {
         // Lee los datos del sensor
-        uint16_t co2;
-        // ...
+        uint16_t sensor_data;
+
+        if (!I2C_ReadRegister(0x02, &sensor_data)) { // ALG_RESULT_DATA
+            printf("Error de lectura.\n");
+        }
+
+        printf("CO2 Level: 0x%04X\n", sensor_data);
 
         // Añade los datos a la cola
         xQueueSend(data_queue, sensor_data, 0);
@@ -88,40 +93,35 @@ void sensor_task(void* pvParameters) {
 }
 
 void data_process_task(void* pvParameters) {
-    while (1) {
+    for (;;) {
         // Lee los datos de la cola
-        uint8_t sensor_data[SENSOR_DATA_SIZE];
+        uint16_t sensor_data;
         xQueueReceive(data_queue, sensor_data, portMAX_DELAY);
 
         // Procesa los datos
-        uint16_t processed_data = sensor_data[0] << 8 | sensor_data[1];
+        uint16_t processed_data = sensor_data;
 
         // Añade los datos procesados a la cola
-        uint8_t processed_data_bytes[2] = { (uint8_t)(processed_data >> 8), (uint8_t)processed_data };
-        xQueueSend(data_queue, processed_data_bytes, 0);
+        xQueueSend(data_queue, processed_data, 0);
     }
 }
 
 void led_control_task(void* pvParameters) {
-    // Configura el LED
-    // ...
-
-    while (1) {
+    for (;;) {
         // Lee los datos de la cola
-        uint8_t sensor_data[SENSOR_DATA_SIZE];
+        uint16_t sensor_data];
         xQueueReceive(data_queue, sensor_data, portMAX_DELAY);
 
         // Obtiene el valor de CO2 de los datos
-        uint16_t co2_ppm = sensor_data[2] << 8 | sensor_data[3];
+        uint16_t co2_ppm = sensor_data;
 
         // Controla el LED según el valor de CO2
         if (co2_ppm >= 1000) {
-            //digitalWrite(LED_PIN, HIGH);
+            BSP_LedToggle(0);
         }
         else {
-            //digitalWrite(LED_PIN, LOW);
+            BSP_LedToggle(1);
         }
-        BSP_LedToggle(pData->ledNo);
     }
 }
 
