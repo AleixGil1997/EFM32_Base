@@ -42,6 +42,9 @@ typedef struct {
   int          ledNo;
 } TaskParams_t;
 
+QueueHandle_t data_queue_sensor;
+QueueHandle_t data_queue_processed;
+
 /***************************************************************************//**
  * @brief Simple task which is blinking led
  * @param *pParameters pointer to parameters passed to the function
@@ -57,26 +60,10 @@ static void LedBlink(void *pParameters)
   }
 }
 
-void setup() {
-    // Inicialitza la cua
-    data_queue = xQueueCreate(10, SENSOR_DATA_SIZE);
-
-    I2C_Test();
-
-    // Crea les tasques
-    xTaskCreate(sensor_task, (const char*) "Sensor Task", STACK_SIZE_FOR_TASK, NULL, 1, NULL);
-    xTaskCreate(data_process_task, (const char*) "Data Process Task", STACK_SIZE_FOR_TASK, NULL, 2, NULL);
-    xTaskCreate(led_control_task, (const char*) "LED Control Task", STACK_SIZE_FOR_TASK, NULL, 3, NULL);
-
-    for (;;) {
-
-    }
-}
-
-void sensor_task(void* pvParameters) {
+static void sensor_task() {
     for (;;) {
         // Lee los datos del sensor
-        uint16_t sensor_data;
+        uint16_t sensor_data = 0;
 
         if (!I2C_ReadRegister(0x02, &sensor_data)) { // ALG_RESULT_DATA
             printf("Error de lectura.\n");
@@ -85,44 +72,65 @@ void sensor_task(void* pvParameters) {
         printf("CO2 Level: 0x%04X\n", sensor_data);
 
         // Añade los datos a la cola
-        xQueueSend(data_queue, sensor_data, 0);
+        xQueueSend(data_queue_sensor, &sensor_data, 0);
 
         // Espera un tiempo antes de volver a leer los datos
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
-void data_process_task(void* pvParameters) {
+static void data_process_task() {
     for (;;) {
         // Lee los datos de la cola
-        uint16_t sensor_data;
-        xQueueReceive(data_queue, sensor_data, portMAX_DELAY);
+        uint16_t sensor_data = 0;
+        xQueueReceive(data_queue_sensor, &sensor_data, portMAX_DELAY);
 
         // Procesa los datos
-        uint16_t processed_data = sensor_data;
+        uint16_t processed_data = sensor_data * 1;
 
         // Añade los datos procesados a la cola
-        xQueueSend(data_queue, processed_data, 0);
+        xQueueSend(data_queue_processed, &processed_data, 0);
+
+        // Espera un tiempo antes de volver a leer los datos
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
-void led_control_task(void* pvParameters) {
+static void led_control_task() {
     for (;;) {
         // Lee los datos de la cola
-        uint16_t sensor_data];
-        xQueueReceive(data_queue, sensor_data, portMAX_DELAY);
+        uint16_t sensor_data = 0;
+        xQueueReceive(data_queue_processed, &sensor_data, 0);
 
         // Obtiene el valor de CO2 de los datos
         uint16_t co2_ppm = sensor_data;
 
         // Controla el LED según el valor de CO2
-        if (co2_ppm >= 1000) {
-            BSP_LedToggle(0);
+        if (co2_ppm == 0x10) {
+        	BSP_LedSet(0);
+            BSP_LedClear(1);
         }
         else {
-            BSP_LedToggle(1);
+        	BSP_LedSet(1);
+            BSP_LedClear(0);
         }
+
+        // Espera un tiempo antes de volver a leer los datos
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
+}
+
+void setup() {
+    // Inicialitza la cua
+    data_queue_sensor = xQueueCreate(10, 2);
+    data_queue_processed = xQueueCreate(10, 2);
+
+    while(!I2C_Test()) {}
+
+    // Crea les tasques
+    xTaskCreate(sensor_task, (const char*) "Sensor Task", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+    xTaskCreate(data_process_task, (const char*) "Data Process Task", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+    xTaskCreate(led_control_task, (const char*) "LED Control Task", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
 }
 
 /***************************************************************************//**
@@ -140,8 +148,8 @@ int main(void)
   /* Setting state of leds*/
   BSP_LedSet(0);
   BSP_LedSet(1);
-  BSP_LedToggle(0);
-  BSP_LedToggle(1);
+  BSP_LedClear(0);
+  BSP_LedClear(1);
 
   /* Initialize SLEEP driver, no calbacks are used */
   SLEEP_Init(NULL, NULL);
@@ -158,7 +166,7 @@ int main(void)
   //xTaskCreate(LedBlink, (const char *) "LedBlink1", STACK_SIZE_FOR_TASK, &parametersToTask1, TASK_PRIORITY, NULL);
   //xTaskCreate(LedBlink, (const char *) "LedBlink2", STACK_SIZE_FOR_TASK, &parametersToTask2, TASK_PRIORITY, NULL);
 
-  xTaskCreate(setup, (const char *) "Sensor", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
+  setup();
 
 
   /*Start FreeRTOS Scheduler*/

@@ -11,8 +11,6 @@ static uint8_t device_addr;
 
 SemaphoreHandle_t xSemaphore = NULL;
 
-QueueHandle_t data_queue;
-
 void BSP_I2C_Init(uint8_t addr) {
 
 	I2C_Init_TypeDef i2cInit = I2C_INIT_DEFAULT;
