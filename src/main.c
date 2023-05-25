@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
@@ -69,7 +70,11 @@ static void sensor_task() {
             printf("Error de lectura.\n");
         }
 
-        printf("CO2 Level: 0x%04X\n", sensor_data);
+        srand(time(NULL)); // Inicializar la semilla de números aleatorios con el tiempo actual
+
+        sensor_data = (rand() % (8192 - 400 + 1)) + 400;
+
+        printf("CO2 Level: %d\n", sensor_data);
 
         // Añade los datos a la cola
         xQueueSend(data_queue_sensor, &sensor_data, 0);
@@ -106,13 +111,17 @@ static void led_control_task() {
         uint16_t co2_ppm = sensor_data;
 
         // Controla el LED según el valor de CO2
-        if (co2_ppm == 0x10) {
+        if (co2_ppm > 5000) {
         	BSP_LedSet(0);
+            BSP_LedSet(1);
+        }
+        else if (co2_ppm > 2000) {
+            BSP_LedSet(0);
             BSP_LedClear(1);
         }
         else {
-        	BSP_LedSet(1);
             BSP_LedClear(0);
+            BSP_LedClear(1);
         }
 
         // Espera un tiempo antes de volver a leer los datos
