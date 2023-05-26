@@ -70,9 +70,7 @@ static void sensor_task() {
             printf("Error de lectura.\n");
         }
 
-        srand(time(NULL)); // Inicializar la semilla de números aleatorios con el tiempo actual
-
-        sensor_data = (rand() % (8192 - 400 + 1)) + 400;
+        sensor_data = rand() % 4000;
 
         printf("CO2 Level: %d\n", sensor_data);
 
@@ -95,9 +93,6 @@ static void data_process_task() {
 
         // Añade los datos procesados a la cola
         xQueueSend(data_queue_processed, &processed_data, 0);
-
-        // Espera un tiempo antes de volver a leer los datos
-        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -111,21 +106,18 @@ static void led_control_task() {
         uint16_t co2_ppm = sensor_data;
 
         // Controla el LED según el valor de CO2
-        if (co2_ppm > 5000) {
+        if (co2_ppm > 2500) {
         	BSP_LedSet(0);
             BSP_LedSet(1);
         }
-        else if (co2_ppm > 2000) {
+        else if (co2_ppm > 1500) {
             BSP_LedSet(0);
             BSP_LedClear(1);
         }
-        else {
+        else if (co2_ppm > 0) {
             BSP_LedClear(0);
             BSP_LedClear(1);
         }
-
-        // Espera un tiempo antes de volver a leer los datos
-        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -135,6 +127,8 @@ void setup() {
     data_queue_processed = xQueueCreate(10, 2);
 
     while(!I2C_Test()) {}
+
+    srand(time(NULL)); // Inicializar la semilla de números aleatorios con el tiempo actual
 
     // Crea les tasques
     xTaskCreate(sensor_task, (const char*) "Sensor Task", STACK_SIZE_FOR_TASK, NULL, TASK_PRIORITY, NULL);
